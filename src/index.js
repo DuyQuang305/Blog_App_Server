@@ -4,7 +4,7 @@ const app = express()
 const db = require('./config/db')
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const router = require('./Routes');
+const router = require('./Modules/routes');
 
 //Connect to DB
 db.connect();
@@ -12,6 +12,7 @@ db.connect();
 app.use(cors())
 app.use(express.json())
 app.use(bodyParser.urlencoded({ extended: true}))
+app.use('/uploads', express.static('uploads'))
 
 router(app)
 app.get('/', function (req, res) {
