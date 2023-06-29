@@ -1,124 +1,143 @@
-const users = require('../../Models/Users');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const users = require("../../Models/Users");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const axios = require("axios");
-const nodemailer = require('nodemailer');
-require('dotenv').config();
-
-
+const nodemailer = require("nodemailer");
+require("dotenv").config();
 
 class Controller {
-    // [Post] / api/auth/Login
-    async login(req, res, next) {
-        try {
-            const { username, password } = req.body;
+  // [Post] / api/auth/Login
+  async login(req, res, next) {
+    try {
+      const { email, password } = req.body;
 
-            // Tìm người dùng trong cơ sở dữ liệu
-            const user = await users.findOne({ username });
+      // Tìm người dùng trong cơ sở dữ liệu
+      const user = await users.findOne({ email });
 
-            if (!user) {
-                return res.json({ msg: "Incorrect username or password", status: false });
-            }
+      if (!user) {
+        return res.json({ msg: "Incorrect email or password", status: false });
+      }
 
-            // Kiểm tra mật khẩu
-            const isMatch = await bcrypt.compare(password, user.password);
+      // Kiểm tra mật khẩu
+      const isMatch = await bcrypt.compare(password, user.password);
 
-            if (!isMatch) {
-                return res.json({ msg: "Incorrect username or password", status: false });
-            } else if (!user.isVerified) {
-                return res.json({ msg: "Please verify your email address before logging in", status: false });
-            }
+      if (!isMatch) {
+        return res.json({ msg: "Incorrect email or password", status: false });
+      } else if (!user.isVerified) {
+        return res.json({
+          msg: "Please verify your email address before logging in",
+          status: false,
+        });
+      }
 
-            const accessToken = jwt.sign({ userId: user._id, fullname: user.username, avt: user.avatarImage }, process.env.ACCESS_TOKEN_SECRET);
-            // Tạo token và gửi về cho người dùng
-            return res.status(201).json({ accessToken });
-        } catch (err) {
-            next(err)
-        }
+      const accessToken = jwt.sign(
+        { userId: user._id, fullname: user.username, avatar: user.avatarImage },
+        process.env.ACCESS_TOKEN_SECRET
+      );
+      // Tạo token và gửi về cho người dùng
+      return res.status(201).json({ accessToken });
+    } catch (err) {
+      next(err);
     }
+  }
 
-    async loginGoogle(req, res, next) {
-        const googleToken = req.body.access_token
+  async loginGoogle(req, res, next) {
+    const googleToken = req.body.access_token;
 
-        const headers = {
-            'Authorization': `Bearer ${googleToken}`,
-            'Content-Type': 'application/json'
-        };
+    const headers = {
+      Authorization: `Bearer ${googleToken}`,
+      "Content-Type": "application/json",
+    };
 
-        try {
-            const { data } = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, { headers })
+    try {
+      const { data } = await axios.get(
+        `https://www.googleapis.com/oauth2/v3/userinfo`,
+        { headers }
+      );
 
-            const user = await users.findOne({ email: data.email });
+      const user = await users.findOne({ email: data.email });
 
-            if (user) {
-                if (!user.authGoogleId) {
-                    user.authGoogleId = data.authGoogleId;
-                    await user.save();
-                }
-
-                const accessToken = jwt.sign({ userId: user._id, fullname: user.username, avatar: user.avatarImage }, process.env.ACCESS_TOKEN_SECRET);
-                return res.status(201).json({ accessToken });
-            }
-
-            const newUser = new users({
-                username: data.name,
-                authType: 'google',
-                authGoogleId: data.sub,
-                email: data.email,
-                avatarImage: data.picture,
-                isVerified: true,
-            });
-
-            newUser.save();
-
-            const accessToken = jwt.sign({ userId: newUser._id, fullname: newUser.username, avt: newUser.avatarImage }, process.env.ACCESS_TOKEN_SECRET)
-            return res.status(201).json({ accessToken });
-
-        } catch (error) {
-            return res.status(500).json({ msg: 'server ' })
+      if (user) {
+        if (!user.authGoogleId) {
+          user.authGoogleId = data.authGoogleId;
+          await user.save();
         }
+
+        const accessToken = jwt.sign(
+          {
+            userId: user._id,
+            fullname: user.username,
+            avatar: user.avatarImage,
+          },
+          process.env.ACCESS_TOKEN_SECRET
+        );
+        return res.status(201).json({ accessToken });
+      }
+
+      const newUser = new users({
+        username: data.name,
+        authType: "google",
+        authGoogleId: data.sub,
+        email: data.email,
+        isVerified: true,
+      });
+
+      newUser.save();
+
+      const accessToken = jwt.sign(
+        {
+          userId: newUser._id,
+          fullname: newUser.username,
+          avt: newUser.avatarImage,
+        },
+        process.env.ACCESS_TOKEN_SECRET
+      );
+      return res.status(201).json({ accessToken });
+    } catch (error) {
+      return res.status(500).json({ msg: "server " });
     }
+  }
 
-    async register(req, res, next) {
-        try {
-            const { username, email, password } = req.body;
-            const isVerified = false;
-            const usernameCheck = await users.findOne({ username });
-            const emailCheck = await users.findOne({ email });
+  async register(req, res, next) {
+    try {
+      const { username, email, password } = req.body;
+      const isVerified = false;
+      const usernameCheck = await users.findOne({ username });
+      const emailCheck = await users.findOne({ email });
 
-            if (usernameCheck) {
-                return res.json({ msg: "Username already used", status: false });
-            } else if (emailCheck) {
-                return res.json({ msg: "email already used", status: false });
-            } else {
-                const salt = await bcrypt.genSalt(10);
-                const hashedPassword = await bcrypt.hash(password, salt);
+      if (usernameCheck) {
+        return res.json({ msg: "Username already used", status: false });
+      } else if (emailCheck) {
+        return res.json({ msg: "email already used", status: false });
+      } else {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-                const user = await users.create({
-                    username,
-                    email,
-                    password: hashedPassword,
-                    isVerified,
-                });
+        const user = await users.create({
+          username,
+          email,
+          password: hashedPassword,
+          isVerified,
+        });
 
-                const token = jwt.sign({ email }, process.env.JWT_SECRET, {
-                    expiresIn: "30m",
-                });
+        const token = jwt.sign({ email }, process.env.JWT_SECRET, {
+          expiresIn: "30m",
+        });
 
-                const transporter = nodemailer.createTransport({
-                    service: "gmail",
-                    auth: {
-                        user: process.env.EMAIL,
-                        pass: process.env.PASSWORD,
-                    },
-                });
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASSWORD,
+          },
+        });
 
-                const verifyUrl = `http://localhost:5000/auth/verify/${token}`
-                const mailOptions = {
-                    from: process.env.EMAIL,
-                    to: email,
-                    subject: "Email verification",
-                    html: `<!-- © 2018 Shift Technologies. All rights reserved. -->
+        const verifyUrl = `http://localhost:5000/auth/verify/${token}`;
+        const mailOptions = {
+          from: process.env.EMAIL,
+          to: email,
+          subject: "Email verification",
+          html: `<!-- © 2018 Shift Technologies. All rights reserved. -->
               <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout:fixed;background-color:#f9f9f9" id="bodyTable">
                 <tbody>
                   <tr>
@@ -294,68 +313,74 @@ class Controller {
                   </tr>
                 </tbody>
               </table>`,
-                };
+        };
 
-                transporter.sendMail(mailOptions, (error, info) => {
-                    if (error) {
-                        console.log("Error in sending email  " + error);
-                    } else {
-                        console.log("Email sent" + info.response);
-                    }
-                });
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.log("Error in sending email  " + error);
+          } else {
+            console.log("Email sent" + info.response);
+          }
+        });
 
-                return res.json({ status: true, user, msg: 'Email sent successfully, please check your email', token: token });
-            }
-        } catch (err) {
-            next(err);
-        }
+        return res.json({
+          status: true,
+          user,
+          msg: "Email sent successfully, please check your email",
+          token: token,
+        });
+      }
+    } catch (err) {
+      next(err);
     }
+  }
 
-    async verifyUser(req, res, next) {
-        const token = req.params.token;
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            const email = decoded.email;
+  async verifyUser(req, res, next) {
+    const token = req.params.token;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const email = decoded.email;
 
-            await users.findOneAndUpdate({ email }, { isVerified: true });
+      await users.findOneAndUpdate({ email }, { isVerified: true });
 
-            res.redirect('http://localhost:3000/login');
-
-        } catch (err) {
-            console.error(err);
-        }
+      res.redirect("http://localhost:3000/login");
+    } catch (err) {
+      console.error(err);
     }
+  }
 
-    async sendMessage(req, res, next) {
-        const { email } = req.body;
+  async sendMessage(req, res, next) {
+    const { email } = req.body;
 
-        try {
-            const user = await users.findOne({ email });
+    try {
+      const user = await users.findOne({ email });
 
-            if (!user) {
-                return res.status(404).json({ msg: "User does not exist in the system", status: false });
-            } else {
-                const email = user.email
+      if (!user) {
+        return res
+          .status(404)
+          .json({ msg: "User does not exist in the system", status: false });
+      } else {
+        const email = user.email;
 
-                const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-                    expiresIn: "30m",
-                });
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+          expiresIn: "30m",
+        });
 
-                const transporter = nodemailer.createTransport({
-                    service: "gmail",
-                    auth: {
-                        user: process.env.EMAIL,
-                        pass: process.env.PASSWORD,
-                    },
-                });
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL,
+            pass: process.env.PASSWORD,
+          },
+        });
 
-                const resetUrl = `http://localhost:3000/reset-password/${token}`;
+        const resetUrl = `http://localhost:3000/reset-password/${token}`;
 
-                const mailOptions = {
-                    from: process.env.EMAIL,
-                    to: email,
-                    subject: "Email verification",
-                    html: `
+        const mailOptions = {
+          from: process.env.EMAIL,
+          to: email,
+          subject: "Email verification",
+          html: `
                     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout:fixed;background-color:#f9f9f9" id="bodyTable">
                         <tbody>
                             <tr>
@@ -531,50 +556,59 @@ class Controller {
                             </tr>
                         </tbody>
                     </table>`,
-                };
+        };
 
-                transporter.sendMail(mailOptions, (error, info) => {
-                    if (error) {
-                        console.log("Error in sending email  " + error);
-                        return res.status(500).json({ message: 'Error in sending email', status: false });
-                    } else {
-                        return res.status(200).json({ message: 'Email sent successfully, please check your email',token: token ,status: true });
-                    }
-                });
-            }
-        } catch (error) {
-            console.log(error);
-            res.status(500).json({ message: 'Server error' });
-        }
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.log("Error in sending email  " + error);
+            return res
+              .status(500)
+              .json({ message: "Error in sending email", status: false });
+          } else {
+            return res
+              .status(200)
+              .json({
+                message: "Email sent successfully, please check your email",
+                token: token,
+                status: true,
+              });
+          }
+        });
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Server error" });
     }
+  }
 
-    async ResetPassword(req, res, next) {
-        const { password } = req.body;
-        const token = req.params.token;
+  async ResetPassword(req, res, next) {
+    const { password } = req.body;
+    const token = req.params.token;
 
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET)
-            const userId = decoded.userId;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.userId;
 
-            const user = await users.findById({ _id: userId })
+      const user = await users.findById({ _id: userId });
 
-            if (!user) {
-                return res.status(404).json({ message: 'User does not exist in the system' })
-            }
+      if (!user) {
+        return res
+          .status(404)
+          .json({ message: "User does not exist in the system" });
+      }
 
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
 
-            user.password = hashedPassword;
+      user.password = hashedPassword;
 
-            await user.save();
+      await user.save();
 
-            return res.status(200).json({ message: 'Password reset successfully' });
-        } catch (error) {
-            return res.status(401).json({ message: 'Invalid token' });
-        }
+      return res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+      return res.status(401).json({ message: "Invalid token" });
     }
-
+  }
 }
 
-module.exports = new Controller;
+module.exports = new Controller();
