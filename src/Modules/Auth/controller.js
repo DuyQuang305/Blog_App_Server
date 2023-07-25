@@ -331,7 +331,7 @@ class Controller {
         });
       }
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: error.message})
     }
   }
 
@@ -345,7 +345,7 @@ class Controller {
 
       res.redirect("http://localhost:3000/login");
     } catch (err) {
-      console.error(err);
+      return res.status(500).json({msg: err.message})
     }
   }
 
@@ -577,7 +577,7 @@ class Controller {
       }
     } catch (error) {
       console.log(error);
-      res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ message: error.message});
     }
   }
 

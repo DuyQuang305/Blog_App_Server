@@ -23,7 +23,7 @@ class Controller {
         .status(200)
         .json({ msg: "Get blogs succesfully", data: blogs, totalCount });
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: err.message})
     }
   }
 
@@ -52,7 +52,8 @@ class Controller {
         .status(201)
         .json({ msg: "Create blog succesfully", data: blog });
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: err.message})
+
     }
   }
 
@@ -77,7 +78,8 @@ class Controller {
 
       return res.status(201).json({ msg: "Edit blog succesfully"});
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: err.message})
+
     }
   }
 
@@ -98,7 +100,8 @@ class Controller {
 
       return res.status(204).json({ msg: "Delete blog succesfully", blog });
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: err.message})
+
     }
   }
 
@@ -116,7 +119,8 @@ class Controller {
 
       return res.status(200).json({ blog: blogs });
     } catch (err) {
-      next(err);
+      return res.status(500).json({msg: err.message})
+
     }
   }
 }

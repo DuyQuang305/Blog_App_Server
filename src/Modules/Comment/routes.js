@@ -7,7 +7,7 @@ router.get("/", controller.showComment);
 
 router.use(authentication.checkAuthentication);
 
-router.post("/addComment", controller.addComment);
+router.post("/add", controller.addComment);
 
 router.put("/:id", controller.editComment);
 

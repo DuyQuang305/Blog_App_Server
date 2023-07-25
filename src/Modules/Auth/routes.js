@@ -20,14 +20,14 @@ router.post(
 router.get("/verify/:token", controller.verifyUser);
 
 router.post(
-  "/sendMessage",
+  "/send-message",
   Validator.checkSendMessage,
   Validator.validate,
   controller.sendMessage
 );
 
 router.post(
-  "/resetPassword/:token",
+  "/reset-password/:token",
   Validator.checkResetPassword,
   Validator.validate,
   controller.ResetPassword
